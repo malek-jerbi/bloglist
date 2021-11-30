@@ -33,7 +33,7 @@ const tokenExtractor = (request, response, next) => {
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     
     request.token = authorization.substring(7)
-    console.log("AAAAAAAAAAAAAAAAA", request.token)
+    console.log('token received. first few letters: '+ request.token.substring(0,5))
   }
   else {
     console.log('nope')

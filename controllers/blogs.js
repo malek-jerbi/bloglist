@@ -6,7 +6,7 @@ const middleware = require('../utils/middleware')
 
 blogsRouter.get('/', async (request, response) => {
   const blogs = await Blog
-  .find({}).populate('user', { username: 1, name: 1})
+    .find({}).populate('user', { username: 1, name: 1 })
   response.json(blogs)
 })
 
@@ -15,12 +15,12 @@ blogsRouter.post('/', middleware.userExtractor, async (request, response) => {
   const body = request.body
   const token = request.token
   const userToken = request.user
-  console.log(userToken.id)
   if (!token || !userToken.id) {
-    return response.status(401).json({ error: 'token missing or invalid '})
+    return response.status(401).json({ error: 'token missing or invalid ' })
   }
 
   const user = await User.findById(userToken.id)
+  
 
   const blog = new Blog({
     title: body.title,
@@ -30,14 +30,18 @@ blogsRouter.post('/', middleware.userExtractor, async (request, response) => {
     user: user.id,
   })
 
- // try {
-    const savedBlog = await blog.save()
-    
-    user.blogs = user.blogs.concat(savedBlog.id)
-    await user.save()
-    response.json(savedBlog)
-  //}
- // catch (error) { response.status(400).send(error.message) }
+   try {
+  const savedBlog = await blog.save()
+  Blog.populate(savedBlog, 'user')
+  
+  user.blogs = user.blogs.concat(savedBlog.id)
+  
+  await user.save()
+  response.json(savedBlog)
+  }
+  catch (error) { 
+    console.log(error.message)
+    response.status(400).send(error.message) }
 })
 
 blogsRouter.delete('/:id', middleware.userExtractor, async (request, response) => {
@@ -45,28 +49,36 @@ blogsRouter.delete('/:id', middleware.userExtractor, async (request, response) =
   const token = request.token
   const userToken = request.user
   if (blog.user.toString() === userToken.id.toString()) {
+    const user = await User.findById(userToken.id)
     await Blog.findByIdAndRemove(request.params.id)
+   // console.log('without the id found : ', user.blogs.filter( id => id.toString() !== request.params.id ))
+    /* console.log('user blogs 1 : ', user.blogs)
+    console.log('user blogs 2 : ', user.blogs.filter( id => id !== request.params.id)) */
+   user.blogs = user.blogs.filter( id => id.toString() !== request.params.id )
+    
+   await user.save()
     response.status(204).end()
   }
   else {
-    response.status(401).json({ error: 'invalid token'})
+    response.status(401).json({ error: 'invalid token' })
   }
-  
+
 })
 
 blogsRouter.put('/:id', async (request, response) => {
   const body = request.body
 
   const blog = {
+    user: body.user,
     title: body.title,
     author: body.author,
     url: body.url,
     likes: body.likes
   }
 
-  const updatedNote = await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
+  const updatedBlog = await Blog.findByIdAndUpdate(request.params.id, blog, { new: true })
 
-  response.json(updatedNote)
+  response.json(updatedBlog)
 })
 
 module.exports = blogsRouter
